@@ -35,7 +35,16 @@ from PySide6.QtCore import (Qt,
                             QModelIndex,
                             QRegularExpression
                             )
+from PySide6.QtGui import QIcon
+
 from math import ceil
+
+try:
+  from ctypes import windll # Only exists on Windows.
+  myappid = "mycompany.myproduct.subproduct.version"
+  windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+except ImportError:
+  pass
 
 #Close any previously open QApplication
 if not QApplication.instance():
@@ -43,40 +52,65 @@ if not QApplication.instance():
 else:
     app = QApplication.instance()
 
+
+basedir = os.path.dirname(__file__)
+
 #DataFrames, dictionaries and lists
 data = {"Caso": [],
         "Area": [],
+        "Complemento": [],
         "Tinción": [],
+        "TinSinEst": [],
+        "Control": [],
         "Grosor": [],
         "Fecha": [],
         "Escaneado": [],
         "Ubicación": [],
         'Transferencia': []}
 
-TincionList = ["H&E",
+TincionList = ["HE",
                "BA",
-               "PTAU",
-               "P_A_SYN",
+               "P-TAU",
+               "PAS",
+               "PAS Diastasa",
+               "TM",
+               "BW",
+               "LFB",
+               "LFB + Shift",
+               "GRAM",
+               "Warthin-Starry",
+               "AT",
+               "ZN",
+               "LF",
+               "RC",
+               "PTDP43",
+               "PSYN",
                "FUS",
-               "GFAP",
-               "P_TDP43",
                "P62",
-               "FastBlue",
-               "CD36UV",
-               'IBA1',
-               'P_TDP4',
-               'TMEM119',
-               'HLA-DR',
-               'CD68',
-               'Vimentina',
-               'Neurofilamento',
-               'NeuN',
-               'PrP',
-               'BA/IBA1',
-               'CD44',
-               'SP37',
-               'Notch2',
-               'Notch3',
+               "NEU-N",
+               "CK7",
+               "HCG",
+               "GFAP",
+               "PrP",
+               "IBA-1",
+               "HLA-DR",
+               "CD68",
+               "CD36",
+               "TMEM119",
+               "VIMENTINA",
+               "SYNUCLEIN",
+               "PLG",
+               "APP",
+               "TYROSINASE",
+               "NOTCH 1",
+               "NOTCH 2",
+               "NOTCH 3",
+               "CD44",
+               "E-CADHERINA",
+               "Tinción no estandarizada"
+               #"CD36UV",
+               #'BA/IBA1',
+               #'SP37',
                ]
 
 SBBList = [["B1", 3, "Polo frontal"],
@@ -90,7 +124,12 @@ SBBList = [["B1", 3, "Polo frontal"],
            ["B9", 3, 'Corteza occipital'],
            ["B10", 2, 'Giro del cíngulo anterior'],
            ["B11", 2, 'Giro del cíngulo posterior'],
-           ["B12", 6, 'Hipocampo'],
+           ["B12.1 CGL", 1, 'Hipocampo en CGL'],
+           ["B12.2", 1, 'Hipocampo'],
+           ["B12.3", 1, "Hipocampo"],
+           ["B12.4", 1, "Hipocampo"],
+           ["B12.5", 1, "Hipocampo"],
+           ["B12.6", 1, "Hipocampo"],
            ["B12.-1", 1, 'Hipocampo'],
            ["B12.-2", 1, 'Hipocampo'],
            ["B12.-3", 1, 'Hipocampo'],
@@ -133,10 +172,13 @@ SBBList = [["B1", 3, "Polo frontal"],
            ["B44", 1, "Pedúnculo cerebeloso superior"],
            ["B45", 1, "Pedúnculo cerebeloso medio"],
            ["B46", 1, "Pedúnculo cerebeloso inferior"],
-           ["B47", 3, "Mesencéfalo"],
+           ["B47.1 SN", 1, "Mesencéfalo SN"],
+           ["B47.2 SN", 1, "Mesencéfalo SN"],
+           ["B47.3 SN", 1, "Mesencéfalo SN"],
            ["B47.M", 1, "Mesencefalo medio"],
            ["B47.I", 1, "Mesencefalo inferior"],
-           ["B48", 2, "Puente"],
+           ["B48.1 LC", 1, "Puente en LC"],
+           ["B48.2 LC", 1, "Puente en LC"],
            ["B48.M", 1, "Puente medio"],
            ["B48.I", 1, "Puente inferior"],
            ["B49.S", 1, "Bulbo raquídeo superior"],
@@ -162,9 +204,12 @@ ABBList = [["AB1", 1, "Núcleo subtalámico de Luys"],
            ["AB10.IX", 1, "Nervio glosofaríngeo"],
            ["AB10.XI", 1, "Nervio espinal"],
            ["AB10.XII", 1, "Nervio hipogloso"],
-           ["AB11T", 2, "Médula torácica"],
-           ["AB11L", 2, "Médula lumbar"],
-           ["AB11S", 2, "Médula sacra"],
+           ["AB11 T1", 1, "Médula torácica"],
+           ["AB11 T2", 1, "Médula torácica"],
+           ["AB11 L1", 1, "Médula lumbar"],
+           ["AB11 L2", 1, "Médula lumbar"],
+           ["AB11 S1", 1, "Médula sacra"],
+           ["AB11 S2", 1, "Médula sacra"],
            ["AB12", 1, "Cauda equina"],
            ["AB13", 1, "Nervios periféricos"]
     ]
@@ -198,7 +243,14 @@ OBBList = [["AB14.1", 1, "Mucosa olfatoria"],
            ["AB14.28", 1, "Ganglio linfático"],
            ["AB14.29", 1, "Diafragma"],
            ["AB14.30", 1, "Intestino grueso"],
-           ["AB14.31", 1, "Tejido mamario"]
+           ["AB14.31", 1, "Tejido mamario"],
+           ["AB14.32", 1, "Apéndice"]
+    ]
+
+MABList = [["MA1", 1, "Micro arreglo 1"],
+           ["MA2", 1, "Micro arreglo 2"],
+           ["MA3", 1, "Micro arreglo 3"],
+           ["MA4", 1, "Micro arreglo 4"]    
     ]
 
 BBDict = dict()
@@ -214,15 +266,21 @@ def listToDict(List):
 listToDict(SBBList)
 listToDict(ABBList)
 listToDict(OBBList)
-
+listToDict(MABList)
 
 
 #Load dataframe or create new ones
 if os.path.exists('DF1.csv'):
-    DF1 = pd.read_csv('DF1.csv', index_col=False)
+    DF1 = pd.read_csv('DF1.csv', index_col=False, keep_default_na=False)
     DF1 = DF1.drop('Unnamed: 0', axis=1)
 else:
     DF1 = pd.DataFrame(data)
+
+DF1.index.name = "Consecutivo"
+DF1["Caso"] = DF1["Caso"].astype("int64")
+DF1["Grosor"] = DF1["Grosor"].astype("int64")
+DF1["Escaneado"] = DF1["Escaneado"].astype("bool")
+DF1["Transferencia"] = DF1["Transferencia"].astype("bool")
 
 #Custom signals
 class updateSignal(QObject):
@@ -311,6 +369,12 @@ class Filtrar(QWidget):
         self.TincionSelect = QComboBox()
         self.TincionSelect.addItems(DF1["Tinción"].unique())
         
+        self.TinSinEstSelect = QComboBox()
+        self.TinSinEstSelect.addItems(DF1["TinSinEst"].unique())
+        
+        self.ControlSelect = QComboBox()
+        self.ControlSelect.addItems(DF1["Control"].unique())
+        
         self.GrosorSelect = QComboBox()
         self.GrosorSelect.addItems(DF1["Grosor"].unique().astype(str))
         
@@ -333,6 +397,8 @@ class Filtrar(QWidget):
             "Caso": self.CasoSelect,
             "Area": self.AreaSelect,
             "Tinción": self.TincionSelect,
+            "TinSinEst": self.TinSinEstSelect,
+            "Control": self.ControlSelect,
             "Grosor": self.GrosorSelect,
             "Fecha": self.FechaSelect,
             "Ubicación": self.UbicacionSelect,
@@ -436,6 +502,23 @@ class DatosGenerales(QWidget):
         TincionListW.setSelectionMode(QAbstractItemView.MultiSelection)
         TincionHBox.addWidget(TincionListW)
         layout1.addLayout(TincionHBox)
+        
+        TinSinEstHBox = QHBoxLayout()
+        TinSinEstLabel = QLabel("Especificar tinción no estandarizada:")
+        TinSinEstLabel.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        TinSinEstHBox.addWidget(TinSinEstLabel)
+        TinSinEstListW = QLineEdit()
+        TinSinEstHBox.addWidget(TinSinEstListW)
+        layout1.addLayout(TinSinEstHBox)
+        
+        ControlHBox = QHBoxLayout()
+        ControlLabel = QLabel("Control:")
+        ControlLabel.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        ControlHBox.addWidget(ControlLabel)
+        ControlBox = QComboBox()
+        ControlBox.addItems(["", "Positivo", "Negativo"])
+        ControlHBox.addWidget(ControlBox)
+        layout1.addLayout(ControlHBox)
         
         GrosorHBox = QHBoxLayout()
         GrosorLabel = QLabel("Grosor de corte (en μ):")
@@ -610,6 +693,12 @@ class AddCase(QWidget):
         OtrosButton.pressed.connect(self.activateOtros)
         buttonLayout.addWidget(OtrosButton)
         self.stackLayout.addWidget(BloquesEstandar(OBBList))
+        
+        etiqueta = "Micro Arreglos"
+        MAButton = QPushButton(etiqueta)
+        MAButton.pressed.connect(self.activateMA)
+        buttonLayout.addWidget(MAButton)
+        self.stackLayout.addWidget(BloquesEstandar(MABList))
        
         self.setLayout(pageLayout)
         
@@ -624,35 +713,57 @@ class AddCase(QWidget):
         
     def activateOtros(self):
         self.stackLayout.setCurrentIndex(3)
+        
+    def activateMA(self):
+        self.stackLayout.setCurrentIndex(4)
+        
+    def showError(self, text):
+        
+        DelDoneBox = QMessageBox()
+        DelDoneBox.setText(text)
+        DelDoneBox.exec()
     
     def addLaminas(self):
         
         areaList = list()
-        
+        modList = list()
+                
         for tab in self.findChildren(BloquesEstandar):
             for sbb in tab.findChildren(SbbWidget):
                 checkbox = sbb.findChildren(QCheckBox)[0]
                 if checkbox.isChecked() == True:
                     mod = sbb.findChildren(QLineEdit)[0].text()
-                    if mod:
-                        label = f"{sbb.findChildren(QLabel)[0].text()}{mod}"
-                    else:
-                        label = sbb.findChildren(QLabel)[0].text()
+                    label = sbb.findChildren(QLabel)[0].text()
                     times = sbb.findChildren(QSpinBox)[0].value()
                     for x in range(times):
-                        areaList.append(label)
+                        areaList.append(label) 
+                        modList.append(mod)
+        
+        if len(areaList) == 0:
+            self.showError("No se ha seleccionado láminas")
+            return
         
         newDF = pd.DataFrame(data)
         newDF["Area"] = areaList
+        newDF["Complemento"] = modList
         
         DG = self.findChildren(DatosGenerales)[0]
-        newDF["Caso"] = int(DG.findChildren(QLineEdit)[0].text())
-        newDF["Grosor"] = int(DG.findChildren(QLineEdit)[1].text())
+        try:
+            newDF["Caso"] = int(DG.findChildren(QLineEdit)[0].text())
+        except:
+            self.showError("Se ha ingresado un número de caso invalido")
+            return
+        try:    
+            newDF["Grosor"] = int(DG.findChildren(QLineEdit)[2].text())
+        except:
+            self.showError("Se ha ingresado un número de grosor invalido")
+            return
+        newDF["Control"] = DG.findChildren(QComboBox)[0].currentText()
         FechaUnknown = DG.findChildren(QCheckBox)[0].isChecked()
         if FechaUnknown == True:
             newDF["Fecha"] = nan
         else:
-            newDF["Fecha"] = DG.findChildren(QDateEdit)[0].date().toString("dd/MMM/yyyy")
+            newDF["Fecha"] = DG.findChildren(QDateEdit)[0].date().toString("dd/MMM/yyyy").lower()
         newDF["Escaneado"] = DG.findChildren(QCheckBox)[1].isChecked()
         newDF["Transferencia"] = DG.findChildren(QCheckBox)[2].isChecked()
         
@@ -660,22 +771,40 @@ class AddCase(QWidget):
         
         duplicatedDF = newDF.copy()
         
-        for x in range(len(tinciones)):
-            if x == 0:
-                newDF["Tinción"] = tinciones[x].text()
-            else:
-                duplicatedDF["Tinción"] = tinciones[x].text()
-                newDF = pd.concat([newDF, duplicatedDF], ignore_index=True)
+        if len(tinciones) == 0:
+            self.showError("No se ha seleccionado ninguna tinción")
+            return
         
-        global DF1
-        
-        DF1 = pd.concat([DF1, newDF], ignore_index=True)
-        
-        AddDoneBox = QMessageBox()
-        AddDoneBox.setText("Las láminas se han añadido")
-        AddDoneBox.exec()
-        
-        self.uSignal.updated.emit()
+        else:
+            for x in range(len(tinciones)):
+                if x == 0:
+                    newDF["Tinción"] = tinciones[x].text()
+                    if tinciones[x].text() == "Tinción no estandarizada":
+                        TinSinEst = DG.findChildren(QLineEdit)[1].text()
+                        newDF["TinSinEst"] = TinSinEst
+                    else:
+                        newDF["TinSinEst"] = ""
+                else:
+                    duplicatedDF["Tinción"] = tinciones[x].text()
+                    if tinciones[x].text() == "Tinción no estandarizada":
+                        TinSinEst = DG.findChildren(QLineEdit)[1].text()
+                        duplicatedDF["TinSinEst"] = TinSinEst
+                    else:
+                        duplicatedDF["TinSinEst"] = ""
+                    newDF = pd.concat([newDF, duplicatedDF], ignore_index=True)
+    
+            
+            global DF1
+            
+            
+            
+            DF1 = pd.concat([DF1, newDF], ignore_index=True)
+            
+            AddDoneBox = QMessageBox()
+            AddDoneBox.setText("Las láminas se han añadido")
+            AddDoneBox.exec()
+            
+            self.uSignal.updated.emit()
 
 #---------------------Export to PDF classes-----------------------------------
 
@@ -737,7 +866,40 @@ class ExportPDF(QPushButton):
             pdf.savefig(fig, bbox_inches='tight')
             
             plt.close()
+
+#--------------------Export to Intranet----------------------------------------
+class ExportIntra(QPushButton):
+    def __init__(self):
+        super().__init__()
+
+        self.pressed.connect(self.exportarCSV)
+        
+    def exportarCSV(self):
+        currentDate = QDate.currentDate().toString("yyyy_MM_dd")
+        
+        savePath = QFileDialog.getSaveFileName(self, "Save File",f"Tabla{currentDate}", "CSVs (*.csv)")[0]
+        
+        DF2 = DF1.copy()
+        
+        DF2 = DF2.drop(["Ubicación", "Transferencia", "TinSinEst"], axis=1)
+        
+        DF2.index.names = ["consecutivo"]
+                
+        DF2["Escaneado"] = DF2["Escaneado"].apply(lambda x: str(x).upper())
+        
+        DF2 = DF2[["Caso", "Area", "Complemento", "Tinción", "Grosor", "Escaneado",
+                   "Fecha", "Control"]]
+        
+        DF2.columns = ["caso", "area", "area_complemento", "tincion", "grosor",
+                       "escaneado", "fecha", "control"]
+        
+        DF2.to_csv(savePath)
+        
+        ExpDoneBox = QMessageBox()
+        ExpDoneBox.setText("El caso ha sido exportado a CSV")
+        ExpDoneBox.exec()
     
+
 
 #---------------------Main Window class---------------------------------------
 
@@ -759,7 +921,8 @@ class MainWindow(QMainWindow):
         self.table.setModel(self.model)
         self.table.setSortingEnabled(True)
         
-        self.setWindowTitle('MyApp')
+        self.setWindowTitle("LaminasDB - por Carlos Rueda")
+        #self.setWindowIcon(QIcon("IconLaminasDB.svg"))
         
         self.addCase = AddCase()
         self.addCase.uSignal.updated.connect(self.actualizar)
@@ -772,6 +935,9 @@ class MainWindow(QMainWindow):
         
         self.exportButton = ExportPDF()
         self.exportButton.setText("Exportar a PDF")
+        
+        self.intraButton = ExportIntra()
+        self.intraButton.setText("Exportar a CSV")
 
         layout1 = QHBoxLayout()
         
@@ -795,6 +961,7 @@ class MainWindow(QMainWindow):
         SaveButtonsLayout = QHBoxLayout()
         SaveButtonsLayout.addWidget(button)
         SaveButtonsLayout.addWidget(self.exportButton)
+        SaveButtonsLayout.addWidget(self.intraButton)
         layout1_1.addLayout(SaveButtonsLayout)
         layout1.addLayout(layout1_1, 70)
         
@@ -817,6 +984,10 @@ class MainWindow(QMainWindow):
         self.filtrarWidget.AreaSelect.addItems(DF1["Area"].sort_values().unique())
         self.filtrarWidget.TincionSelect.clear()
         self.filtrarWidget.TincionSelect.addItems(DF1["Tinción"].unique())
+        self.filtrarWidget.TinSinEstSelect.clear()
+        self.filtrarWidget.TinSinEstSelect.addItems(DF1["TinSinEst"].unique())
+        self.filtrarWidget.ControlSelect.clear()
+        self.filtrarWidget.ControlSelect.addItems(DF1["Control"].unique())
         self.filtrarWidget.GrosorSelect.clear()
         self.filtrarWidget.GrosorSelect.addItems(DF1["Grosor"].unique().astype(str))
         self.filtrarWidget.FechaSelect.clear()
@@ -892,6 +1063,7 @@ class MainWindow(QMainWindow):
         self.table.sortByColumn(logicalIndex, order)
         DF1.reindex(self.model._data.index)
 
+app.setWindowIcon(QIcon(os.path.join(basedir, "Icon.ico")))
 
 window = MainWindow()
 window.show()

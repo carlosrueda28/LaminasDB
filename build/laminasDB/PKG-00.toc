@@ -1,4 +1,4 @@
-('C:\\Users\\User\\Documents\\GitHub\\LaminasDB\\build\\laminasDB\\laminasDB.pkg',
+('C:\\Users\\User\\Documents\\GitHub\\LaminasDB\\build\\laminasDB\\LaminasDB.pkg',
  {'BINARY': True,
   'DATA': True,
   'EXECUTABLE': True,
